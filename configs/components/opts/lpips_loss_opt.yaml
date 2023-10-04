@@ -1,0 +1,5 @@
+num_patches: 1
+patch_size: 64
+patch_ratio: [1., 2.] # 64x64, 128x128
+loss:
+    perc_loss: 0.01

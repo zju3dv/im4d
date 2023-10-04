@@ -1,0 +1,16 @@
+__pycache__/
+.idea/
+.ipynb_checkpoints/
+.DS_Store
+*.py[cod]
+*.so
+*.ply
+*.orig
+*.o
+*.json
+*.pth
+*.npy
+*.ipynb
+*.png
+*.jpg
+data

@@ -1,0 +1,46 @@
+parent_cfg: configs/components/methods/nerf.yaml
+task: kplanes
+network_module: lib.networks.nerf.network
+network: &network_cfg
+    net:
+        type: nerf
+        width: 64
+        depth: 1
+        view_depth: 2
+        view_width: 64
+        activation: relu
+        skips: [4,]
+    xyz_encoding:
+        type: kplanes
+        in_dim: 4
+        include_input: False
+        spatial_res: [64, 128, 256, 512]
+        temporal_res: [150, 150, 150, 150]
+        num_feat_ch: 16
+        res_composite: concat
+        planes_composite: concat
+    dir_encoding:
+        type: frequency
+        in_dim: 3
+        num_frequencies: 1
+        include_input: True
+sampler_cfg: &sampler_cfg
+    N_anneal_slope: 10.
+    N_anneal_steps: 1000
+samplers: 
+    - type: cascade_sampler 
+      num_samples: 32
+      <<: *network_cfg
+      <<: *sampler_cfg
+      only_geo: True
+      xyz_encoding:
+        type: kplanes
+        in_dim: 4
+        include_input: False
+        spatial_res: [128]
+        temporal_res: [150]
+        num_feat_ch: 12
+        res_composite: concat
+        planes_composite: concat
+    - type: uniform_sampler
+      num_samples: 64

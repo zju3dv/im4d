@@ -1,0 +1,12 @@
+scene: '0013_01'
+configs:
+  - configs/components/datasets/base_dataset.yaml
+  - configs/components/methods/nerf.yaml
+  - configs/components/losses/base_loss.yaml
+  - configs/components/opts/base_opt.yaml
+  - configs/components/engine/base_engine.yaml
+
+train_dataset:
+    frame_sample: [0, 150, 150]
+test_dataset:
+    frame_sample: [0, 150, 150]

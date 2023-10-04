@@ -1,0 +1,3 @@
+parent_cfg: configs/components/engine/base_engine.yaml
+train:
+    lr: 1e-2

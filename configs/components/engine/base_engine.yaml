@@ -1,0 +1,19 @@
+train:
+    batch_size: 1 
+    lr: 5e-4
+    lr_table:
+        null_embedding: 0.1 
+    weight_decay: 0.
+    epoch: 160
+    scheduler:
+        type: 'warmup_cosine'
+    num_workers: 8
+    collator: none
+test:
+    batch_size: 1
+    collator: none
+ep_iter: 1000 # 1000 iterations per epoch
+save_ep: 20 # save frequency: save_ep * ep_iter iterations
+eval_ep: 20 # donnot evaluate during training
+save_latest_ep: 1 # extraly save the latest model every save_latest_ep * ep_iter iterations
+log_interval: 10 # log training status every log_interval iterations

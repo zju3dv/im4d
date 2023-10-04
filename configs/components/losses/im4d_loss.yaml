@@ -1,0 +1,3 @@
+loss_module: lib.train.losses.nerf
+loss:
+    msk_weight: 0.1

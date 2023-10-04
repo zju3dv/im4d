@@ -1,0 +1,5 @@
+loss_module: lib.train.losses.nerf
+loss:
+    msk_weight: 0.
+    distortion: 0.
+    rand_bkgd: False

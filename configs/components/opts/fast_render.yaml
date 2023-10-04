@@ -1,0 +1,4 @@
+fast_render: True
+num_max_samples: 128 # try to enlarge this number to get better performance
+weight_thresh: 0.01
+chunk_size: 10000000

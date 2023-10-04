@@ -1,0 +1,28 @@
+render_path: True
+write_video: True
+save_result: True
+save_tag: path
+fps: 15
+
+render_center: [0, -0.8, 0]
+render_radius: 3.
+render_angle: 15
+render_view_range: [-180, 180]
+render_frames: [0, 150, 1]
+render_stop_frame: [50, 100]
+render_stop_time: [80, 80]
+num_circle: 150
+render_axis: 'y'
+render_ixts_start: [0, 75, 150, 225]
+render_ixts_end: [75, 150, 225, 300]
+render_ixts_ratio: [1.5, 1., 0.75, 1.]
+render_smooth: smoothstep
+render_h_w: [900, 600]
+
+test_dataset:
+    frame_sample: [0, 150, 1]
+    input_view_sample: [0, 60, 1, -1]
+    test_views: [-1] # use all views
+
+evaluate:
+    metrics: []

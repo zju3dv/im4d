@@ -1,0 +1,8 @@
+scene: '0013_01'
+bounds: [[-7.948958873748779297e-01, -1.049845576286315918e+00, -6.689459085464477539e-01], [8.191189765930175781e-01, 9.538862109184265137e-01, 5.349187850952148438e-01]]
+configs:
+  - configs/components/datasets/base_dataset.yaml
+  - configs/components/methods/kplanes.yaml
+  - configs/components/losses/kplanes_loss.yaml
+  - configs/components/opts/base_opt.yaml
+  - configs/components/engine/ngp_engine.yaml

@@ -1,0 +1,22 @@
+parent_cfg: configs/components/methods/nerf.yaml
+task: enerf
+network_module: lib.networks.nerf.methods.enerf
+network:
+    num_planes: 48
+    depth_inv: False
+    mvs_scale: 0.25
+    cost_feat_input_ch: 32
+    cost_feat_level: 2
+    cost_feat_scale: 0.25
+    cost_net_light_weight: False
+    feature_net:
+        type: enerf_unet
+    net:
+        type: enerf
+    xyz_encoding:
+        type: imgfeat_ibrnet
+        feat_dim: 8
+
+samplers: 
+    - type: mvs_sampler
+      num_samples: 2

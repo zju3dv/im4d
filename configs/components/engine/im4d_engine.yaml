@@ -1,0 +1,7 @@
+parent_cfg: configs/components/engine/base_engine.yaml
+train_fp16: True
+eval_fp16: False
+train:
+    lr: 1e-3
+    lr_table:
+        xyz_encoder: 1e-2

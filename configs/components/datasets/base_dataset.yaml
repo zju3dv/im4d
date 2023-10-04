@@ -1,0 +1,32 @@
+train_dataset_module: lib.datasets.volcap.base_dataset
+test_dataset_module: lib.datasets.volcap.base_dataset
+render_path: False # whether to render path
+num_pixels: 1024 # number of pixels to sample for each image during each tarining iteration
+white_bkgd: True
+dataset_cfg: &dataset_cfg
+    data_root: 'renbody'
+    img_dir: 'images'
+    img_frame_format: '{:06d}.jpg'
+    msk_dir: 'maskes'
+    msk_frame_format: '{:06d}.jpg'
+    resize_ratio: 0.5
+    special_resize_ratio: 0.375
+    special_views: [48, 60, 1, -1] # if -1 in special_views, then special_views = np.arange(48, 60, 1) else special_views = special_views
+    crop_h_w: [900, 600]
+    input_view_sample: [0, 60, 1, -1]
+    render_view_sample: [0, 60, 1, -1]
+    test_views: [11, 25, 37, 57]
+    preload_data: True
+    imgs_per_batch: 8
+    ignore_dist_k3: False
+    bbox_type: 'RENBODY'
+    shift_pixel: False
+    near_far: [0.1, 100.]
+train_dataset:
+    <<: *dataset_cfg
+    split: 'train'
+    frame_sample: [0, 150, 1]
+test_dataset:
+    <<: *dataset_cfg
+    split: 'test'
+    frame_sample: [0, 150, 20]

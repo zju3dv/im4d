@@ -1,0 +1,3 @@
+scene: '0008_03'
+configs:
+  - configs/exps/enerf/renbody/0013_01.yaml

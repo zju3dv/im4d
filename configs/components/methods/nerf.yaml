@@ -1,0 +1,31 @@
+task: nerf
+network_module: lib.networks.nerf.network
+network: &network_cfg
+    net:
+        type: nerf
+        width: 256
+        depth: 8
+        view_depth: 1
+        view_width: 128
+        activation: relu
+        skips: [4,]
+    xyz_encoding:
+        type: frequency
+        in_dim: 3
+        num_frequencies: 10
+        include_input: True
+    dir_encoding:
+        type: frequency
+        in_dim: 3
+        num_frequencies: 4
+        include_input: True
+sampler_cfg: &sampler_cfg
+    N_anneal_slope: 10.
+    N_anneal_steps: 1000
+samplers: 
+    - type: cascade_sampler 
+      num_samples: 64
+      <<: *network_cfg
+      <<: *sampler_cfg
+    - type: uniform_sampler
+      num_samples: 64

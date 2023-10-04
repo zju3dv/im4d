@@ -1,0 +1,14 @@
+train_dataset_module: lib.datasets.volcap.ibr_dataset
+test_dataset_module: lib.datasets.volcap.ibr_dataset
+dataset_cfg: &dataset_cfg
+    train_input_views: [2, 3, 4, 5]
+    train_input_views_prob: [0.1, 0.35, 0.45, 0.1]
+    test_input_views: 4
+    crop_srcinps: True
+    crop_padding: 5
+    crop_align: 16
+    imgs_per_batch: 1
+train_dataset:
+    <<: *dataset_cfg
+test_dataset:
+    <<: *dataset_cfg

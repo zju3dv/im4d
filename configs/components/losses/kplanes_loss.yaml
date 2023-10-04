@@ -1,0 +1,8 @@
+loss_module: lib.train.losses.nerf
+loss:
+    msk_weight: 0.1
+    prop_weight: 1.
+    plane_tv: 0.0002
+    time_smooth: [0.001, 0.00001]
+    l1_time_planes: 0.0
+    distortion: 0.0

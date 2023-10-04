@@ -1,0 +1,9 @@
+grid_resolution: [128, 256, 128] # Renbody yaxis is height
+subgrid_resolution: [3, 3, 3]
+padding_grid: False
+chunk_size: 1048576 # 2**20
+test_dataset:
+    frame_sample: [0, 150, 1] #
+    test_views: [0]
+    preload_data: False
+    use_global_bbox: False

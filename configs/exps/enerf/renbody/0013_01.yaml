@@ -1,0 +1,8 @@
+scene: '0013_01'
+configs:
+  - configs/components/datasets/base_dataset.yaml
+  - configs/components/datasets/mvibr.yaml
+  - configs/components/methods/enerf.yaml
+  - configs/components/losses/base_loss.yaml
+  - configs/components/opts/base_opt.yaml
+  - configs/components/engine/base_engine.yaml

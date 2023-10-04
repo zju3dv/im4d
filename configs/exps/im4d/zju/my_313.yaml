@@ -1,0 +1,30 @@
+scene: 'my_313'
+bounds: [[-0.66116, -1.00905, -0.11307], [1.28783, 0.91661, 2.00343]]
+# align gravity
+configs:
+  - configs/components/datasets/zju_dataset.yaml
+  - configs/components/datasets/mvibr.yaml
+  - configs/components/methods/im4d.yaml
+  - configs/components/losses/kplanes_loss.yaml
+  - configs/components/opts/base_opt.yaml
+  - configs/components/opts/im4d_opt.yaml
+  - configs/components/engine/im4d_engine.yaml
+
+train:
+    epoch: 120
+
+num_pixels: 4096
+dataset_cfg: &dataset_cfg
+    train_input_views: [2, 3]
+    train_input_views_prob: [0.9, 0.1]
+    test_input_views: 2
+    crop_srcinps: True
+    crop_padding: 5
+    crop_align: 16
+    imgs_per_batch: 1
+train_dataset:
+    <<: *dataset_cfg
+test_dataset:
+    <<: *dataset_cfg
+network: 
+    temporal_res: [300, 300, 300, 300]

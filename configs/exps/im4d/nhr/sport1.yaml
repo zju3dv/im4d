@@ -1,0 +1,21 @@
+scene: 'sport_1_easymocap'
+bounds: [[-0.3871598, -0.3356453, -0.15346932], [0.36616263, 1.0683727,  1.5910634]]
+# align gravity
+configs:
+  - configs/components/datasets/nhr_dataset.yaml
+  - configs/components/datasets/mvibr.yaml
+  - configs/components/methods/im4d.yaml
+  - configs/components/losses/kplanes_loss.yaml
+  - configs/components/opts/base_opt.yaml
+  - configs/components/opts/im4d_opt.yaml
+  - configs/components/engine/im4d_engine.yaml
+train:
+    epoch: 120
+dataset_cfg: &dataset_cfg
+    transform: [[1., 0., 0., 0.], [0., 0.17364818, -0.98480775, -3.88852744], [0., 0.98480775, 0.17364818, 2.16014765], [0., 0., 0., 1.]]
+network: 
+    temporal_res: [100, 100, 100, 100]
+train_dataset:
+    <<: *dataset_cfg
+test_dataset:
+    <<: *dataset_cfg
