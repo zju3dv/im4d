@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from lib.config import cfg
+from lib.utils.im4d.im4d_utils import Im4DUtils
 
 class ImgfeatIbrnet(nn.Module):
     """Multi-scale sinusoidal encodings. Support ``integrated positional encodings`` if covariances are provided.
@@ -30,6 +32,7 @@ class ImgfeatIbrnet(nn.Module):
     def forward(
         self, xyz, viewdir=None, **kwargs):
         # xyz: BxN_raysxN_samplesx3
+        if cfg.get('ndc', False): xyz = Im4DUtils.ndc2world(xyz, cfg.ndc_FOCAL, cfg.ndc_H, cfg.ndc_W)
         sample_level, batch = kwargs['sample_level'], kwargs['batch']
         if xyz.shape[-1] == 3: viewdir = viewdir if viewdir is not None else kwargs['viewdir']
         else: xyz, viewdir = torch.split(xyz, [3, 3], dim=-1)

@@ -48,7 +48,7 @@ class Trainer(object):
         end = time.time()
         if self.global_step == 0:
             self.global_step = cfg.ep_iter * epoch
-        iterator = enumerate(data_loader) if args.log_level in ['INFO', 'DEBUG'] else tqdm.tqdm(enumerate(data_loader), desc='Epoch {:03d}/{:03d}: '.format(epoch, cfg.train.epoch), total=len(data_loader))
+        iterator = enumerate(data_loader) if cfg.log_level in ['INFO', 'DEBUG'] else tqdm.tqdm(enumerate(data_loader), desc='Epoch {:03d}/{:03d}: '.format(epoch, cfg.train.epoch), total=len(data_loader))
         
         for iteration, batch in iterator:
             data_time = time.time() - end

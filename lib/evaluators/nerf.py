@@ -69,11 +69,10 @@ class Evaluator(BaseEvaluator):
                 ret.update(self.parse_imgs(output, batch, level=i))
         
         suffix = '' if level == -1 else f'_{level}'
-        if f'rgb_map{suffix}' in output: 
-            rgb = output[f'rgb_map{suffix}'].detach().cpu().numpy().reshape(h, w, 3)
-            depth = output[f'depth_map{suffix}'].detach().cpu().numpy().reshape(h, w)
-            acc = output[f'acc_map{suffix}'].detach().cpu().numpy().reshape(h, w)
-            ret.update({f'rgb{suffix}': rgb, f'depth{suffix}': depth, f'acc{suffix}': acc})
+        
+        if f'rgb_map{suffix}' in output:  ret.update({f'rgb{suffix}': output[f'rgb_map{suffix}'].detach().cpu().numpy().reshape(h, w, 3).astype(np.float32)})
+        if f'depth_map{suffix}' in output: ret.update({f'depth{suffix}': output[f'depth_map{suffix}'].detach().cpu().numpy().reshape(h, w).astype(np.float32)})
+        if f'acc_map{suffix}' in output:   ret.update({f'acc{suffix}': output[f'acc_map{suffix}'].detach().cpu().numpy().reshape(h, w).astype(np.float32)})
 
         return ret
     

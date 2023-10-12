@@ -1,6 +1,6 @@
 # Im4D: High-Fidelity and Real-Time Novel View Synthesis for Dynamic Scenes
 
-### [Project Page (Coming Soon)](https://zju3dv.github.io/im4d) | [Paper](https://drive.google.com/file/d/1MOixYy-TESDvcoL9Qj4V7tDvafqDmibh/view?usp=sharing)
+### [Project Page](https://zju3dv.github.io/im4d) | [Paper](https://drive.google.com/file/d/1MOixYy-TESDvcoL9Qj4V7tDvafqDmibh/view?usp=sharing) | [Video](https://youtu.be/pPl1M5jpK4g)
 > [High-Fidelity and Real-Time Novel View Synthesis for Dynamic Scenes](https://drive.google.com/file/d/1MOixYy-TESDvcoL9Qj4V7tDvafqDmibh/view?usp=sharing) \
 > Haotong Lin, Sida Peng, Zhen Xu, Tao Xie, Xingyi He, Hujun Bao and Xiaowei Zhou \
 > SIGGRAPH Asia 2023 conference track
@@ -39,10 +39,12 @@ export workspace=$PATH_TO_YOUR_WORKSPACE
 Please refer to [mlp_maps](https://github.com/zju3dv/mlp_maps/blob/master/INSTALL.md) to download ZJU-MoCap and NHR datasets.
 After downloading, place them into `$workspace/zju-mocap` and `$workspace/NHR`, respectively.
 </details>
-<details> <summary>2. [TODO] Prepare the DNA-Rendering dataset.</summary>
+<details> <summary>2. Prepare the DNA-Rendering dataset.</summary>
 
-This dataset was originally released last year, and it was called RenBody at that time. We used the RenBody dataset. We recently noticed that the name of this dataset has been changed to [DNA-Rendering](https://dna-rendering.github.io/index.html) and has been accepted by ICCV 2023. We are in communication with the authors of the dataset to check the latest data format and provide relevant parsers.
-</details>
+Since the license of the [DNA-Rendering](https://dna-rendering.github.io/index.html) dataset does not allow distribution, we cannot release the processed dataset publicly.
+You can download the DNA-Rendering dataset at [here](https://dna-rendering.github.io/inner-download.html) or [OpenXLab](https://openxlab.org.cn/datasets/OpenXDLab/DNA-Rendering) . If someone is interested at the processed data, please email me (haotongl@outlook.com).
+You need to cite [DNA-Rendering](https://dna-rendering.github.io/index.html) if you find this data useful.
+</details> 
 
 <!-- <details> <summary>3. [TODO] Prepare the dynerf dataset.</summary> -->
 <!-- </details> -->
@@ -90,6 +92,8 @@ Then, render images with the precomputed binary fields.
 ```
 python run.py --type evaluate --cfg_file configs/exps/im4d/renbody/0013_01.yaml --configs configs/components/opts/fast_render.yaml grid_tag default save_result True
 ```
+
+You may try slightly decreasing sigma_thresh (default: 5.0) to preserve more voxels.
 
 </details>
 

@@ -1,7 +1,6 @@
 task: ngp
 network_module: lib.networks.nerf.network
 network: &network_cfg
-    density_act: relu
     net:
         type: nerf
         width: 64

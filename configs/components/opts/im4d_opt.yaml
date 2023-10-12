@@ -1,5 +1,5 @@
 chunk_size: 8192
-num_pixels: 2048
+num_pixels: 2560
 train_dataset:
     imgs_per_batch: 2
 joint_iters: 5000 # 

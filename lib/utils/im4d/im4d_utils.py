@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import cv2
-import open3d as o3d
+    
 import trimesh
 class Im4DUtils:
     @staticmethod
@@ -34,4 +34,13 @@ class Im4DUtils:
         colors = (np.concatenate(colors, axis=0) * 255.).astype(np.uint8)
         mesh = trimesh.PointCloud(points, colors=colors)
         mesh.export(export_path)
+        
+    @staticmethod
+    def ndc2world(points, f, H, W):
+        points = points.clone()
+        points[..., 2] = torch.clamp_max_(points[..., 2], 0.9999)
+        points[..., 2] = 2 / (points[..., 2] -1)
+        points[..., 0] = -points[..., 0] * points[..., 2] * W / (2 * f)
+        points[..., 1] = -points[..., 1] * points[..., 2] * H / (2 * f)
+        return points
         

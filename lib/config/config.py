@@ -5,6 +5,7 @@ from os.path import join
 import numpy as np
 from . import yacs
 import yaml
+import sys
 
 import logging
 import colorlog
@@ -23,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 def define_basic_cfg():
     cfg = CN()
+    cfg.machine = 'default'
+    cfg.train_mode = sys.argv[0] == 'train_net.py'
     cfg.debug = False
     cfg.workspace = os.environ['workspace']
     logger.debug('workspace: ' + cfg.workspace)
@@ -116,19 +119,17 @@ def parse_cfg(cfg, args):
     cfg.exp_name = cfg.exp_name.replace('GITBRANCH', os.popen('git describe --all').readline().strip()[6:])
     cfg.exp_name = cfg.exp_name.replace('GITCOMMIT', os.popen('git describe --tags --always').readline().strip())
     cfg.exp_name = cfg.exp_name.replace('TODAY', os.popen('date +%Y-%m-%d').readline().strip())
-    logger.info('EXP NAME: ' + cfg.exp_name)
     
     cfg.trained_model_dir = os.path.join(cfg.trained_model_dir, cfg.scene, cfg.task, cfg.exp_name)
     cfg.record_dir = os.path.join(cfg.record_dir, cfg.scene, cfg.task, cfg.exp_name)
     cfg.grid_dir = os.path.join(cfg.result_dir, cfg.scene, cfg.task, 'grid', cfg.grid_tag)
     cfg.result_dir = os.path.join(cfg.result_dir, cfg.scene, cfg.task, cfg.exp_name, cfg.save_tag)
     cfg.local_rank = int(os.environ['LOCAL_RANK']) if 'LOCAL_RANK' in os.environ else 0
-    logger.debug('local rank: ' + str(cfg.local_rank))
     modules = [key for key in cfg if '_module' in key]
     for module in modules:
-        logger.debug(module + ' ' + cfg[module])
+        logger.info(module + ' ' + cfg[module])
         cfg[module.replace('_module', '_path')] = cfg[module].replace('.', '/') + '.py'
-    
+        
 def load_yaml_file(file_path):
     with open(file_path, 'r') as file:
         return yaml.safe_load(file)
@@ -153,10 +154,12 @@ def list_to_str(inputs, split='\n    '):
 def make_cfg(args):
     if args.cfg_file[:8] == 'configs/':
         cfg = define_basic_cfg()
+        cfg.log_level = os.environ['LOG_LEVEL'] if ('LOG_LEVEL' in os.environ and os.environ['LOG_LEVEL'] in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']) else args.log_level
         loaded_cfg_files = []
         cfg_ = merge_cfg(args.cfg_file, cfg, loaded_cfg_files)
         if args.configs is not None:
             for config in args.configs: merge_cfg(config, cfg_, loaded_cfg_files)
+        logger.debug('Loaded config files (in order):')
         logger.debug(list_to_str(loaded_cfg_files))
         try: index = args.opts.index('other_opts'); cfg_.merge_from_list(args.opts[:index])
         except: cfg_.merge_from_list(args.opts)
@@ -171,8 +174,17 @@ def make_cfg(args):
         file_handler.setFormatter(file_formatter)
     
     # LOGGING
-    logger.debug('Evaluation with float16: ' + str(cfg_.eval_fp16))
-    logger.debug('Training with float16: ' + str(cfg_.train_fp16))
+    logger.info('=' * 30 + ' CONFIG ' + '=' * 30)
+    logger.info('EXP NAME: ' + cfg.exp_name)
+    if cfg.train_mode:
+        logger.info('Training mode')
+        logger.info('Training with float16: ' + str(cfg_.train_fp16))
+        logger.info('Number of images: ' + str(cfg_.train_dataset.imgs_per_batch))
+        logger.info('Number of pixels: ' + str(cfg_.num_pixels))
+    else:
+        logger.info('Testing mode')
+        logger.info('Evaluation with float16: ' + str(cfg_.eval_fp16))
+    logger.info('=' * 30 + ' CONFIG END ' + '=' * 30)
     return cfg_
 
 def get_log_level(level_str):
@@ -190,10 +202,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--cfg_file", default="configs/default.yaml", type=str)
 parser.add_argument("--type", type=str, default="")
 parser.add_argument("--configs", type=str, action='append')
-parser.add_argument('--log_level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='Set the log level', default='DEBUG')
+parser.add_argument('--log_level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='Set the log level; It will firstly read LOG_LEVEL from environment variables', default='DEBUG')
 parser.add_argument("opts", default=None, nargs=argparse.REMAINDER)
 args = parser.parse_args()
-logger.setLevel(get_log_level(args.log_level))
+logger.setLevel(get_log_level(os.environ['LOG_LEVEL'] if ('LOG_LEVEL' in os.environ and os.environ['LOG_LEVEL'] in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']) else args.log_level))
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)

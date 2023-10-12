@@ -13,7 +13,7 @@ def run_dataset():
     from lib.utils.data_utils import save_img
 
     # cfg.train.num_workers = 8
-    data_loader = make_data_loader(cfg, is_train=False)
+    data_loader = make_data_loader(cfg, is_train=True)
     for batch in tqdm.tqdm(data_loader):
         print(batch['near_far'])
 
@@ -120,7 +120,7 @@ def run_cache_grid():
             torch.cuda.synchronize()
             start_time = time.time()
             with torch.cuda.amp.autocast(enabled=cfg.eval_fp16):
-                binary, bound = network.cache_grid(batch)
+                binary, bound = network.cache_grid(batch, cfg.save_mesh)
                 binarys.append(binary)
                 bounds.append(bound)
             torch.cuda.synchronize()

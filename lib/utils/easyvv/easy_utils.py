@@ -69,7 +69,7 @@ class FileStorage(object):
         self.__del__(self)
 
 
-def read_camera(intri_path: str, extri_path: str, cam_names=[]):
+def read_camera(intri_path: str, extri_path: str, cam_names=[], read_rvec=True):
     assert os.path.exists(intri_path), intri_path
     assert os.path.exists(extri_path), extri_path
 
@@ -88,7 +88,7 @@ def read_camera(intri_path: str, extri_path: str, cam_names=[]):
         # Extrinsics
         Tvec = extri.read('T_{}'.format(cam))
         Rvec = extri.read('R_{}'.format(cam))
-        if Rvec is not None: R = cv2.Rodrigues(Rvec)[0]
+        if Rvec is not None and read_rvec: R = cv2.Rodrigues(Rvec)[0]
         else:
             R = extri.read('Rot_{}'.format(cam))
             Rvec = cv2.Rodrigues(R)[0]

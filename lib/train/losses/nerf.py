@@ -76,12 +76,30 @@ class NetworkWrapper(nn.Module):
     
     def compute_color_loss(self, output, batch, scalar_stats, suffix):
         rgb_map = output['rgb_map{}'.format(suffix)]
-        if cfg.loss.get('rand_bkgd', False): assert(not cfg.white_bkgd); rgb_map += torch.rand_like(rgb_map) * (1. - output['acc_map{}'.format(suffix)][..., None])
-        color_mse = self.color_crit(rgb_map, batch['rgb'])
-        psnr = -10. * torch.log(color_mse.detach()) / math.log(10)
-        scalar_stats.update({'psnr{}'.format(suffix): psnr})
-        scalar_stats.update({'color_mse{}'.format(suffix): color_mse})
-        return color_mse
+        if cfg.loss.get('rand_bkgd', False): 
+            assert(not cfg.white_bkgd); 
+            if rgb_map.shape[-1] == 3:
+                rgb_map = rgb_map + torch.rand_like(rgb_map) * (1. - output['acc_map{}'.format(suffix)][..., None])
+            elif rgb_map.shape[-1] == 6:
+                rgb_map[..., 3:6] = rgb_map[..., 3:6] + torch.rand_like(rgb_map[..., 3:6]) * (1. - output['acc_map{}'.format(suffix)][..., None])
+                
+        if rgb_map.shape[-1] == 3:
+            color_mse = self.color_crit(rgb_map, batch['rgb'])
+            psnr = -10. * torch.log(color_mse.detach()) / math.log(10)
+            scalar_stats.update({'psnr{}'.format(suffix): psnr})
+            scalar_stats.update({'color_mse{}'.format(suffix): color_mse})
+            return color_mse
+        elif rgb_map.shape[-1] == 6:
+            color_mse = self.color_crit(rgb_map[..., :3], batch['rgb'])
+            color_mse_ = color_mse
+            psnr = -10. * torch.log(color_mse.detach()) / math.log(10)
+            scalar_stats.update({'psnr{}'.format(suffix): psnr})
+            scalar_stats.update({'color_mse{}'.format(suffix): color_mse})
+            color_mse = self.color_crit(rgb_map[..., 3:], batch['rgb'])
+            psnr = -10. * torch.log(color_mse.detach()) / math.log(10)
+            scalar_stats.update({'psnr{}_sup'.format(suffix): psnr})
+            scalar_stats.update({'color_mse{}_sup'.format(suffix): color_mse})
+            return color_mse + color_mse_
     
     def compute_msk_loss(self, output, batch, scalar_stats, suffix):
         msk_mse = self.color_crit(output['acc_map{}'.format(suffix)], batch['msk'])
@@ -95,6 +113,7 @@ class NetworkWrapper(nn.Module):
         wp = output['weights{}'.format(suffix)]
         loss = torch.mean(lossfun_outer(c, w, cp, wp))
         scalar_stats.update({'prop_loss{}'.format(suffix): loss})
+        if loss.isnan().any(): loss = 0
         return cfg.loss.get('prop_weight') * loss
     
     def compute_planetv_loss(self, output, batch, scalar_stats, suffix, level):
@@ -141,6 +160,7 @@ class NetworkWrapper(nn.Module):
         loss_matrix = w_matrix * t_matrix.abs()
         loss = loss_matrix.sum(dim=-1).mean()
         scalar_stats.update({'distortion{}'.format(suffix): loss})
+        if loss.isnan().any(): loss = 0
         return loss * cfg.loss.get('distortion')
     
     def compute_perc_loss(self, output, batch, scalar_stats, suffix):
@@ -151,6 +171,21 @@ class NetworkWrapper(nn.Module):
         scalar_stats.update({'perc_loss{}'.format(suffix): loss})
         return loss * cfg.loss.get('perc_loss')
     
+    def compute_l1_timeplanes_loss(self, output, batch, scalar_stats, suffix, level):
+        model = output['model']
+        if level == 0: encoder = model.xyz_encoder
+        elif level == 1: encoder = model.sampler.network.xyz_encoder
+        elif level == 2: encoder = model.sampler.network.sampler.network.xyz_encoder
+        elif level == 3: encoder = model.sampler.network.sampler.network.sampler.network.xyz_encoder
+        else: import ipdb; ipdb.set_trace()
+        
+        loss = 0. 
+        temporal_embedding = encoder.temporal_embedding
+        for plane in temporal_embedding:
+            loss += (1 - plane).pow(2).mean()
+        scalar_stats.update({'l1_timeplanes_loss{}'.format(suffix): loss})
+        return loss * cfg.loss.get('l1_time_planes')
+    
     def compute_loss_level(self, output, batch, scalar_stats, level=-1):
         suffix = '' if level == -1 else '_{}'.format(level)
         loss = 0 
@@ -158,8 +193,9 @@ class NetworkWrapper(nn.Module):
         if self.training and 'rgb_map{}'.format(suffix) in output and cfg.get('num_patches', 0) > 0 and cfg.loss.get('perc_loss', 0.) > 0.: loss += self.compute_perc_loss(output, batch, scalar_stats, suffix)
         if 'acc_map{}'.format(suffix) in output and 'msk' in batch and cfg.loss.get('msk_weight', 0.) > 0.: loss += self.compute_msk_loss(output, batch, scalar_stats, suffix) 
         if level >= 1 and cfg.loss.get('prop_weight', 0.) > 0. and 'weights{}'.format(suffix) in output: loss += self.compute_prop_loss(output, batch, scalar_stats, suffix) 
-        if cfg.loss.get('plane_tv', 0.) > 0.: loss += self.compute_planetv_loss(output, batch, scalar_stats, suffix, level=level) 
-        if cfg.loss.get('time_smooth', [0., 0., 0., 0., 0.])[level] > 0.: loss += self.compute_timesmooth_loss(output, batch, scalar_stats, suffix, level=level) 
+        if cfg.loss.get('plane_tv', 0.) > 0. and batch['step'] % cfg.loss.get('plane_tv_step', 1) == 0: loss += self.compute_planetv_loss(output, batch, scalar_stats, suffix, level=level) 
+        if cfg.loss.get('time_smooth', [0., 0., 0., 0., 0.])[level] > 0. and batch['step'] % cfg.loss.get('time_smooth_step', 1) == 0: loss += self.compute_timesmooth_loss(output, batch, scalar_stats, suffix, level=level) 
+        if cfg.loss.get('l1_time_planes', 0.) > 0. and batch['step'] % cfg.loss.get('l1_time_planes_step', 1) == 0: loss += self.compute_l1_timeplanes_loss(output, batch, scalar_stats, suffix, level=level) 
         if cfg.loss.get('distortion', 0.) > 0. and 'weights{}'.format(suffix) in output: loss += self.compute_distortion_loss(output, batch, scalar_stats, suffix) 
         return loss
 

@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 from os.path import join
 import numpy as np
-from lib.config import cfg
+from lib.config import cfg, logger
 if cfg.fast_render:
     import nerfacc
 from lib.networks.nerf.encoders import get_encoder
@@ -41,7 +41,13 @@ class Network(nn.Module):
         self.density_act = init_density_activation(net_cfg.get('density_act', 'trunc_exp'))
         self.ignore_dist = net_cfg.get('ignore_dist', False) # for multi-view image-based rendering methods
         if cfg.fast_render and sample_level == 0: self.prepare_fast_render(net_cfg)
-
+        
+        logger.debug('network-level{}: xyz_encoder {}'.format(sample_level, str(self.xyz_encoder)))
+        # logger.debug('network-level{}: dir_encoder {}'.format(sample_level, str(self.dir_encoder)))
+        # logger.debug('network-level{}: decoder_net {}'.format(sample_level, str(self.net)))
+        logger.debug('network-level{}: density_act {}'.format(sample_level, str(net_cfg.get('density_act', 'trunc_exp'))))
+        logger.debug('network-level{}: ignore_dist {}'.format(sample_level, str(self.ignore_dist))) # Multi-view image-based rendering methods need to ignore the distance
+        
     def prepare_fast_render(self, net_cfg):
         binarys = np.load(join(cfg.grid_dir, 'binarys.npz'))['arr_0']
         bounds = np.load(join(cfg.grid_dir, 'bounds.npz'))['arr_0']
@@ -81,7 +87,28 @@ class Network(nn.Module):
         T = torch.cat([torch.ones_like(alpha[..., 0:1]), T], dim=-1)
         weights = alpha * T
         return weights
+    
+    @staticmethod
+    def compute_ndc_rays(rays_o, rays_d, near_far, focal, H, W, near=1.):
+        t = -(near + rays_o[...,2]) / rays_d[...,2]
+        rays_o = rays_o + t[...,None] * rays_d
 
+        o0 = -1./(W/(2.*focal)) * rays_o[...,0] / rays_o[...,2]
+        o1 = -1./(H/(2.*focal)) * rays_o[...,1] / rays_o[...,2]
+        o2 = 1. + 2. * near / rays_o[...,2]
+        
+        d0 = -1./(W/(2.*focal)) * (rays_d[...,0]/rays_d[...,2] - rays_o[...,0]/rays_o[...,2])
+        d1 = -1./(H/(2.*focal)) * (rays_d[...,1]/rays_d[...,2] - rays_o[...,1]/rays_o[...,2])
+        d2 = -2. * near / rays_o[...,2]
+
+        rays_o = torch.stack([o0,o1,o2], -1)
+        rays_d = torch.stack([d0,d1,d2], -1)
+        # rays_d = rays_d / np.linalg.norm(rays_d, axis=-1)[..., None]
+        rays_d = rays_d / 2.
+        near_far[..., 0] = 0. 
+        near_far[..., 1] = 1.99 
+        return rays_o, rays_d, near_far
+        
     @staticmethod
     def compute_rays(coords, ext_inv, ixt_inv, time, h_w, near_far):
         rays_o = ext_inv[:, :3, 3][:, None, :].repeat(1, coords.shape[1], 1)
@@ -89,6 +116,7 @@ class Network(nn.Module):
         near_far = near_far[:, None, :].repeat(1, coords.shape[1], 1)
         rays_t = time[:, None, None].repeat(1, coords.shape[1], 1)
         uv = coords[:, :, :2] / (h_w[..., [1, 0]][:, None, :] - 1)
+        if cfg.get('ndc', False): rays_o, rays_d, near_far = Network.compute_ndc_rays(rays_o, rays_d, near_far, cfg.ndc_FOCAL, cfg.ndc_H, cfg.ndc_W)
         return torch.cat([rays_o, rays_d, near_far, rays_t, uv], dim=-1)
 
     @staticmethod
@@ -130,7 +158,6 @@ class Network(nn.Module):
             if 'weights' in k and not self.training: continue # do not need weights in testing
             output.update({k: ret_info[k]})
 
-
         acc_map = vr_weights.sum(dim=-1)
         if cfg.depth_method == 'expected': depth_map = (vr_weights * (z_vals[..., :-1] + z_vals[..., 1:]) * 0.5).sum(dim=-1) # / (acc_map + 1e-6)
         elif cfg.depth_method == 'median': 
@@ -145,6 +172,8 @@ class Network(nn.Module):
             'z_vals_{}'.format(self.sample_level): z_vals,
         })
         if not self.only_geo:
+            # if rgb.shape[-1] == 6: rgb_map = torch.cat([(vr_weights[..., None] * rgb[..., :3]).sum(dim=-2), (vr_weights[..., None] * rgb[..., 3:]).sum(dim=-2)], dim=-1)
+            # else: rgb_map = (vr_weights[..., None] * rgb).sum(dim=-2)
             rgb_map = (vr_weights[..., None] * rgb).sum(dim=-2)
             if cfg.white_bkgd: rgb_map = rgb_map + (1-acc_map[..., None])
             output.update({'rgb_map_{}'.format(self.sample_level): rgb_map})

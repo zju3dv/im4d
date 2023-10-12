@@ -1,0 +1,16 @@
+parent_cfg: exps/im4d/nhr/sport1.yaml
+scene: 'basketball_easymocap'
+bounds: [[-0.4852535, -1.5680639, -0.0541052 ], [0.66885364, -0.49479425, 2.3693736]]
+train:
+    epoch: 120
+dataset_cfg: &dataset_cfg
+    transform: [[ 0.90630779, -0.07338689,  0.41619774,  2.], [ 0.42261826,  0.1573787 , -0.89253894, -5.13], [ 0.        ,  0.98480775,  0.17364818,  2.85], [0., 0., 0., 1.]]
+    test_views: [28, 37, 46]
+    render_view_sample: [0, 72, 1, -1]
+    input_view_sample: [0, 72, 1, -1]
+    msk_dir: 'mask'
+    msk_frame_format: '{:06d}.jpg'
+train_dataset:
+    <<: *dataset_cfg
+test_dataset:
+    <<: *dataset_cfg

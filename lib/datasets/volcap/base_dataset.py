@@ -65,7 +65,7 @@ class Dataset:
         intri_path = join(self.data_root, self.cfg.get('intri_file', 'intri.yml'))
         extri_path = join(self.data_root, self.cfg.get('extri_file', 'extri.yml'))
         logger.debug('Loading camera from: {}, {}'.format(intri_path, extri_path))
-        cams = easy_utils.read_camera(intri_path, extri_path)
+        cams = easy_utils.read_camera(intri_path, extri_path, read_rvec=self.cfg.get('read_rvec', True))
         self.basenames = sorted([k for k in cams])
         cam_len = len(self.basenames)
         self.ixts = np.array([cams[cam_id]['K'] for cam_id in self.basenames]).reshape(cam_len, 3, 3).astype(np.float32)
@@ -170,6 +170,7 @@ class Dataset:
         self.bound = np.array([np.array([self.bounds[k] for k in self.bounds]).min(axis=(0, 1)),
                                np.array([self.bounds[k] for k in self.bounds]).max(axis=(0, 1))]).astype(np.float32)
         self.corner = get_bound_corners(self.bound).astype(np.float32)
+        print('Dataset bound: ', self.bound)
 
     def preload_img(self, frame_id, view_id, **kwargs):
         img_path = join(self.data_root, self.img_dir, self.basenames[view_id], self.img_frame_format.format(frame_id))
@@ -184,16 +185,22 @@ class Dataset:
         self.meta_idx[frame_id][view_id] = len(self.meta_imgs_path) - 1
 
     def get_render_path_meta(self, input_views, **kwargs):
-        path_w2cs = rend_utils.create_center_radius(
-            np.array(cfg.render_center),
-            radius=cfg.render_radius,
-            up=cfg.render_axis,
-            ranges=cfg.render_view_range + [cfg.num_circle],
-            angle_x=cfg.render_angle)  # path 1
-        bottom = np.array([[0, 0, 0, 1.]])[None].repeat(cfg.num_circle, 0)
-        path_w2cs = np.concatenate([path_w2cs, bottom], axis=1)
-        path_w2cs = path_w2cs.astype(np.float32)
-        path_c2ws = np.linalg.inv(path_w2cs)
+        if self.bbox_type == 'LLFF':
+            path_c2ws = np.load(join(self.data_root, cfg.path_name))
+            bottom = np.array([[0, 0, 0, 1.]])[None].repeat(cfg.num_circle, 0)
+            path_c2ws = np.concatenate([path_c2ws, bottom], axis=1)
+            path_w2cs = np.linalg.inv(path_c2ws)
+        else:
+            path_w2cs = rend_utils.create_center_radius(
+                np.array(cfg.render_center),
+                radius=cfg.render_radius,
+                up=cfg.render_axis,
+                ranges=cfg.render_view_range + [cfg.num_circle],
+                angle_x=cfg.render_angle)  # path 1
+            bottom = np.array([[0, 0, 0, 1.]])[None].repeat(cfg.num_circle, 0)
+            path_w2cs = np.concatenate([path_w2cs, bottom], axis=1)
+            path_w2cs = path_w2cs.astype(np.float32)
+            path_c2ws = np.linalg.inv(path_w2cs)
         # DEBUG:
         # np.save('cams.npy', {'input': self.exts_inv, 'render': self.path_c2ws})
         # self.render_ids, render_id = [], 0
@@ -398,7 +405,7 @@ class Dataset:
         else:
             select_inds = np.random.choice(h*w, size=[cfg.num_pixels], replace=True)
             sample_msk = None
-            if cfg.num_patches >= 1: import ipdb; ipdb.set_trace()
+            if cfg.get('num_patches', 0) >= 1: import ipdb; ipdb.set_trace()
         return select_inds, sample_msk
 
     def get_near_far(self, ext, ixt, h, w, frame_id):

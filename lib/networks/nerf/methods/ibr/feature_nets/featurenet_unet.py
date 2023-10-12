@@ -48,7 +48,11 @@ class FeatureNet(nn.Module):
         self.smooth0 = nn.Conv2d(32, 8 if output_ch is None else output_ch, 3, padding=1)
 
     def _upsample_add(self, x, y):
-        return F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=True) + y
+        x_h, x_w, y_h, y_w = x.shape[2], x.shape[3], y.shape[2], y.shape[3]
+        if 2*x_h == y_h and 2*x_w == y_w:
+            return F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=True) + y
+        else:
+            return F.interpolate(x, size=(y_h, y_w), mode='bilinear', align_corners=True) + y
 
     def forward(self, x):
         conv0 = self.conv0(x)

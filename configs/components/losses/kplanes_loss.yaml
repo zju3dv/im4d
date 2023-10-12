@@ -3,6 +3,10 @@ loss:
     msk_weight: 0.1
     prop_weight: 1.
     plane_tv: 0.0002
-    time_smooth: [0.001, 0.00001]
+    time_smooth: [0.001, 0.00001, 0.00001]
     l1_time_planes: 0.0
     distortion: 0.0
+    rand_bkgd: False
+    plane_tv_step: 5
+    time_smooth_step: 5
+    l1_time_planes_step: 5

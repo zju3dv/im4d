@@ -27,12 +27,30 @@ class Dataset(BaseDataset):
         render_cam_xyz = c2w[:3, 3]
         spatial_distances = np.linalg.norm(
             input_cam_xyz - render_cam_xyz[None], axis=-1)
+        
+        input_cam_rot = np.array([self.exts_inv[view_id][:3, :3] for view_id in input_views])
+        render_cam_rot = c2w[:3, :3]
+        rot_distances = np.linalg.norm(input_cam_rot - render_cam_rot[None], axis=(-2, -1))
         argsorts = np.argsort(spatial_distances)
+        argsorts_rot = np.argsort(rot_distances)
         max_input_views = self.cfg.get('train_input_views')[-1] + 2 if self.split == 'train' else self.cfg.get('test_input_views')
+        rot_num = max_input_views // 2
+        spatial_num = max_input_views - rot_num
         if remove_view in input_views:
             return [input_views[i] for i in argsorts[1:max_input_views+1]]
         else:
-            return [input_views[i] for i in argsorts[:max_input_views]]
+            return [input_views[i] for i in argsorts[1:max_input_views+1]]
+            ret_views = [input_views[i] for i in argsorts[:spatial_num]] + [input_views[i] for i in argsorts_rot[:rot_num]]
+            # # may repeat, then remove the repeated and add new ones acoording to rot_distances
+            # ret_views = list(set(ret_views))
+            # while len(ret_views) < max_input_views:
+            #     for i in range(len(input_views)):
+            #         if input_views[i] not in ret_views:
+            #             ret_views.append(input_views[i])
+            #             break
+            # print(ret_views)
+            # return ret_views
+                
 
     def get_metas(self, render_views, input_views):
         logger.info('input views: ' + str(input_views))
@@ -114,7 +132,7 @@ class Dataset(BaseDataset):
             src_ixts.append(src_ixt)
         src_exts = self.exts[src_views]
         src_ixts = np.array(src_ixts)
-        W, H = (np.max(ws) // 16 + 1) * 16, (np.max(hs) // 16 + 1) * 16
+        W, H = (np.max(ws) // 8 + 1) * 8, (np.max(hs) // 8 + 1) * 8
         # padding src_imgs to the same shape (H, W)
         src_inps = []
         for idx, src_img in enumerate(src_imgs):

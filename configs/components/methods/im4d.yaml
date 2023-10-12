@@ -9,6 +9,7 @@ network: &network_cfg
         view_width: 64
         activation: relu
         skips: [4,]
+        only_geo: True
     xyz_encoding:
         type: im4d
         in_dim: 4

@@ -1,13 +1,15 @@
-from lib.config import cfg, args, logger
+import os
+import torch
+import torch.distributed as dist
+import torch.multiprocessing
+
+from lib.config import cfg, logger
 from lib.networks import make_network
 from lib.train import make_trainer, make_optimizer, make_lr_scheduler, make_recorder, set_lr_scheduler
 from lib.datasets import make_data_loader
-from lib.utils.net_utils import load_model, save_model, load_network, save_trained_config, load_pretrain, load_pretrain_head
+from lib.utils.net_utils import load_model, save_model, save_trained_config, load_pretrain
 from lib.evaluators import make_evaluator
-import torch.multiprocessing
-import torch
-import torch.distributed as dist
-import os
+from lib.utils.msg_utils import send_msg
 torch.backends.cudnn.benchmark = False
 # torch.autograd.set_detect_anomaly(True)
 
@@ -92,9 +94,11 @@ def main():
         torch.distributed.init_process_group(backend="nccl",
                                              init_method="env://")
         synchronize()
-
+        
     network = make_network(cfg)
+    send_msg('Training start: ' + cfg.exp_name + ' Machine: ' + cfg.machine, cfg)
     train(cfg, network)
+    send_msg('Training success: ' + cfg.exp_name + ' Machine: ' + cfg.machine, cfg)
     if cfg.local_rank == 0:
         logger.info('Success!')
         logger.info('='*80)

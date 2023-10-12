@@ -30,8 +30,8 @@ def read_bbox_from_dir(dir_path, frames, format='{:05d}.ply', padding_size=0.1, 
             points = np.asarray(np.load(join(dir_path, format.format(frame_id + frame_start_number))))
         else:
             points = np.asarray(trimesh.load(join(dir_path, format.format(frame_id + frame_start_number))).vertices)
-        transform = np.array(cfg.transform)
-        points = points @ transform[:3, :3].T + transform[:3, 3:].T
+        # transform = np.array(cfg.transform)
+        # points = points @ transform[:3, :3].T + transform[:3, 3:].T
         bound = np.array([points.min(0)-padding_size, points.max(0)+padding_size]).astype(np.float32)
         bounds.append(bound)
     bound = np.array([np.array(bounds).min(axis=(0, 1)), np.array(bounds).max(axis=(0, 1))]).astype(np.float32)
@@ -46,6 +46,7 @@ def export_dir_to_video(img_dir, video_path, fps=30, format='.png', quality=8.5,
     import shutil
     if shutil.which('ffmpeg') is not None:
         cmd = 'ffmpeg -loglevel error -y -framerate {} -f image2 -pattern_type glob -nostdin -y -r {} -i "{}/*{}" -c:v libx264 -crf {} -pix_fmt yuv420p {}'.format(fps, fps, img_dir, format, crf, video_path)
+        # cmd = 'ffmpeg -loglevel error -y -framerate {} -f image2 -pattern_type glob -nostdin -y -r {} -i "{}/*{}" -c:v libx264 -crf {} -pix_fmt yuv444p {}'.format(fps, fps, img_dir, format, crf, video_path)
         os.system(cmd)
     else:
         img_paths = [item.path for item in os.scandir(img_dir) if item.name.endswith(format)]
@@ -1296,7 +1297,9 @@ def read_bbox_renbody(data_root, frame_id, transform, bound_padding=0.1):
     return bounds
 
 def read_bbox_nhr(data_root, frame_id, transform, bound_padding=0.1):
-    if 'NHR' in data_root: pcd_path = join(data_root, 'vertices', '{}.npy'.format(frame_id))
+    if 'NHR' in data_root: 
+        if 'basketball' in data_root: pcd_path = join(data_root, 'vertices', '{:06d}.npy'.format(frame_id))
+        else: pcd_path = join(data_root, 'vertices', '{}.npy'.format(frame_id))
     elif 'zju-mocap' in data_root: pcd_path = join(data_root, 'vertices', '{:06d}.npy'.format(frame_id))
     else: pass
     assert(os.path.exists(pcd_path))
