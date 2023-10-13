@@ -1,7 +1,7 @@
 # Im4D: High-Fidelity and Real-Time Novel View Synthesis for Dynamic Scenes
 
-### [Project Page](https://zju3dv.github.io/im4d) | [Paper](https://drive.google.com/file/d/1MOixYy-TESDvcoL9Qj4V7tDvafqDmibh/view?usp=sharing) | [Video](https://youtu.be/pPl1M5jpK4g)
-> [High-Fidelity and Real-Time Novel View Synthesis for Dynamic Scenes](https://drive.google.com/file/d/1MOixYy-TESDvcoL9Qj4V7tDvafqDmibh/view?usp=sharing) \
+### [Project Page](https://zju3dv.github.io/im4d) | [Paper](https://arxiv.org/abs/2310.08585) | [Video](https://youtu.be/pPl1M5jpK4g)
+> [High-Fidelity and Real-Time Novel View Synthesis for Dynamic Scenes](https://arxiv.org/abs/2310.08585) \
 > Haotong Lin, Sida Peng, Zhen Xu, Tao Xie, Xingyi He, Hujun Bao and Xiaowei Zhou \
 > SIGGRAPH Asia 2023 conference track
 
