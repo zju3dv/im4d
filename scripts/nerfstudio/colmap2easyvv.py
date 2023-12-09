@@ -38,7 +38,7 @@ import cv2
 import sys
 sys.path.append('.')
 
-from trdparty.EasyMocapPublic.easymocap.mytools.camera_utils import write_camera
+from lib.utils.camera_utils import write_camera
 
 CameraModel = collections.namedtuple(
     "CameraModel", ["model_id", "model_name", "num_params"])
