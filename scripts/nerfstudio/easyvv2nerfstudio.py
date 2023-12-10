@@ -36,7 +36,7 @@ def main(args):
             else:
                 tar_path = join(args.output, 'images', f'{cam}.png') if args.write_alpha else join(args.output, 'images', f'{cam}.jpg')
                 img = imageio.imread(frame_path)
-                msk = np.array(imageio.imread(join(args.input, 'maskes', cam, f'{args.frame_id:06d}.jpg')))
+                msk = np.array(imageio.imread(join(args.input, 'masks', cam, f'{args.frame_id:06d}.jpg')))
                 if args.write_alpha:
                     out_img = np.concatenate([img, msk[:, :, None]], -1)
                     imageio.imwrite(tar_path, out_img)
