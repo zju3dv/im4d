@@ -1,0 +1,12 @@
+parent_cfg: configs/exps/im4d/renbody/0013_01.yaml
+scene: '0023_08'
+bounds: [[-0.912005, -0.91776419, -0.68696188], [1.19346307, 0.87400487, 0.21226521]]
+
+dataset_cfg: &dataset_cfg
+    data_root: 'DNA-rendering'
+train_dataset:
+    <<: *dataset_cfg
+    frame_sample: [0, 150, 1]
+test_dataset:
+    <<: *dataset_cfg
+    frame_sample: [0, 150, 20]
