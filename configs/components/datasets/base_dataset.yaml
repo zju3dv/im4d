@@ -7,7 +7,7 @@ dataset_cfg: &dataset_cfg
     data_root: 'renbody'
     img_dir: 'images'
     img_frame_format: '{:06d}.jpg'
-    msk_dir: 'maskes'
+    msk_dir: 'masks'
     msk_frame_format: '{:06d}.jpg'
     resize_ratio: 0.5
     special_resize_ratio: 0.375

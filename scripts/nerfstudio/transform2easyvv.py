@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--input', type=str)
     parser.add_argument('--output', type=str)
     parser.add_argument('--output_basename', type=str)
-    parser.add_argument('--json_file', type=str, default='transform.json')
+    parser.add_argument('--json_file', type=str, default='transforms.json')
     args = parser.parse_args()
     return args
 
@@ -25,14 +25,32 @@ def main(args):
     transforms = json.load(open(join(args.input, args.json_file)))
     cameras_out = {}
     cameras_new = {}
+
+    global_intri = False
+    if  'camera_model' in transforms:
+        global_intri = True
+
+        K = np.array([[transforms['fl_x'], 0, transforms['cx'], 0, transforms['fl_y'], transforms['cy'], 0, 0, 1]]).reshape(3, 3)
+        
+        if 'k3' in transforms:
+            dist = np.array([[transforms['k1'], transforms['k2'], transforms['p1'], transforms['p2'], transforms['k3']]])
+        else:
+            dist = np.array([[transforms['k1'], transforms['k2'], transforms['p1'], transforms['p2'], 0.0]])
+        
+        h = transforms['h']
+        w = transforms['w']
+
     for frame in transforms['frames']:
         key = os.path.basename(frame['file_path']).split('.')[0]
-        if frame['camera_model'] == 'OPENCV':
-            K = np.array([[frame['fl_x'], 0, frame['cx'], 0, frame['fl_y'], frame['cy'], 0, 0, 1]]).reshape(3, 3)
-            dist = np.array([[frame['k1'], frame['k2'], frame['p1'], frame['p2'], frame['k3']]])
+        if not global_intri:
+            if frame['camera_model'] == 'OPENCV':
+                K = np.array([[frame['fl_x'], 0, frame['cx'], 0, frame['fl_y'], frame['cy'], 0, 0, 1]]).reshape(3, 3)
+                dist = np.array([[frame['k1'], frame['k2'], frame['p1'], frame['p2'], frame['k3']]])
+            else:
+                import ipdb; ipdb.set_trace()
+            cameras_out[key] = {'K': K, 'dist': dist, 'H': frame['h'], 'W': frame['w']}
         else:
-            import ipdb; ipdb.set_trace()
-        cameras_out[key] = {'K': K, 'dist': dist, 'H': frame['h'], 'W': frame['w']}
+            cameras_out[key] = {'K': K, 'dist': dist, 'H': h, 'W': w}
         
         c2w = np.array(frame['transform_matrix']).reshape(4, 4)
         c2w = transform2opencv(c2w)

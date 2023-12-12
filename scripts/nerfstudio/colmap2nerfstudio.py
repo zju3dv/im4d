@@ -7,7 +7,7 @@ from tqdm import tqdm
 sys.path.append('.')
 
 # from lib.utils.data_utils import read_camera
-from trdparty.colmap.read_write_model import read_model, qvec2rotmat
+from scripts.nerfstudio.colmap2easyvv import read_model
 import json
 
 def parse_args():
@@ -19,7 +19,7 @@ def parse_args():
     return args
 
 def main(args):
-    cameras, images, point3Ds = read_model(args.input)
+    cameras, images, point3Ds = read_model(args.input, ext='.bin')
     if args.input_list is not None:
         interested = open(args.input_list).read().splitlines()
     else:
