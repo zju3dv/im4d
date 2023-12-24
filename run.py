@@ -126,6 +126,7 @@ def run_cache_grid():
             torch.cuda.synchronize()
             end_time = time.time()
         net_time.append(end_time - start_time)
+    os.makedirs(cfg.grid_dir, exist_ok=True)
     np.savez_compressed(join(cfg.grid_dir, 'binarys.npz'), np.array(binarys))
     np.savez_compressed(join(cfg.grid_dir, 'bounds.npz'), np.array(bounds))
     if len(net_time) > 1:
