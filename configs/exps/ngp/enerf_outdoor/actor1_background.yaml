@@ -1,0 +1,42 @@
+scene: actor1
+bounds: [[-1.0, 0.85, -0.62], [1.0, 2.05, 0.44]]
+configs:
+  - configs/components/datasets/enerf_outdoor_dataset.yaml
+  - configs/components/methods/ngp.yaml
+  - configs/components/losses/base_loss.yaml
+  - configs/components/opts/base_opt.yaml
+  - configs/components/engine/ngp_engine.yaml
+
+train_fp16: True
+
+dataset_cfg: &dataset_cfg
+
+    intri_file: nerfstudio/sparse/intri.yml
+    extri_file: nerfstudio/sparse/extri.yml
+    scene_pcd: nerfstudio/sparse/exports/pcd/point_cloud.ply
+
+    img_dir: 'bkgd'
+    img_frame_format: '{:02d}.jpg'
+
+    imgs_per_batch: 8
+    resize_ratio: 0.5
+
+    test_views: [-1]
+    crop_h_w: [-1, -1]
+
+    near_plane_ratio: 0.5
+    far_plane_ratio: 2.0
+train_dataset:
+    <<: *dataset_cfg
+    frame_sample: [0, 1, 1]
+test_dataset:
+    <<: *dataset_cfg
+    test_views: [17]
+    frame_sample: [0, 1, 1]
+
+loss:
+    rand_bkgd: True
+    prop_weight: 1.0
+
+train:
+    epoch: 60

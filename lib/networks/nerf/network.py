@@ -49,18 +49,47 @@ class Network(nn.Module):
         logger.debug('network-level{}: ignore_dist {}'.format(sample_level, str(self.ignore_dist))) # Multi-view image-based rendering methods need to ignore the distance
         
     def prepare_fast_render(self, net_cfg):
+
+        if cfg.get('separate', False):
+            binarys_bg = np.load(join(cfg.grid_dir_bg, 'binarys.npz'))['arr_0'][0]
+            bounds_bg = np.load(join(cfg.grid_dir_bg, 'bounds.npz'))['arr_0'][0]
+            occ_grid = nerfacc.OccGridEstimator(torch.tensor(bounds_bg.reshape(-1)).float(), binarys_bg.shape)
+            occ_grid.binaries = torch.tensor(binarys_bg).bool()[None]
+            del occ_grid.grid_coords
+            del occ_grid.grid_indices
+            del occ_grid.occs
+            occ_grid.cuda()
+            self.occ_grid_bg = occ_grid
+            self.render_step_size_bg = np.linalg.norm(bounds_bg[1] - bounds_bg[0]) / cfg.num_max_samples_bg
+
         binarys = np.load(join(cfg.grid_dir, 'binarys.npz'))['arr_0']
         bounds = np.load(join(cfg.grid_dir, 'bounds.npz'))['arr_0']
         self.occ_grids, self.render_step_size = {}, {}
-        for frame_id in range(*cfg.test_dataset.frame_sample):
-            occ_grid = nerfacc.OccGridEstimator(torch.tensor(bounds[frame_id].reshape(-1)).float(), binarys[frame_id].shape)
-            occ_grid.binaries = torch.tensor(binarys[frame_id]).bool()[None]
+
+        # NOTE: change it to `cfg.test_dataset.frame_sample` when testing
+        frame_sample = cfg.train_dataset.frame_sample
+        cnt = 0
+
+        for frame_id in range(*frame_sample):
+            occ_grid = nerfacc.OccGridEstimator(torch.tensor(bounds[cnt].reshape(-1)).float(), binarys[cnt].shape)
+            occ_grid.binaries = torch.tensor(binarys[cnt]).bool()[None]
+
             del occ_grid.grid_coords
             del occ_grid.grid_indices
             del occ_grid.occs
             occ_grid.cuda()
             self.occ_grids[frame_id] = occ_grid
-            self.render_step_size[frame_id] = np.linalg.norm(bounds[frame_id][1] - bounds[frame_id][0]) / cfg.num_max_samples
+            self.render_step_size[frame_id] = np.linalg.norm(bounds[cnt][1] - bounds[cnt][0]) / cfg.num_max_samples
+
+            cnt += 1
+
+        if cfg.get('separate', False):
+            logger.debug('background grid ' + str(binarys_bg.shape))
+            logger.debug('background bounds ' + str(bounds_bg))
+            logger.debug('background render_step_size ' + str(self.render_step_size_bg))
+            logger.debug('grid ' + str(binarys[0].shape))
+            logger.debug('bounds ' + str(bounds[0]))
+            logger.debug('render_step_size ' + str(self.render_step_size[frame_id]))
 
     @staticmethod
     def volume_rendering(density, z_vals, ray_dir, act, ignore_dist=False):
@@ -184,7 +213,8 @@ class Network(nn.Module):
 
     def render_rays_fast(self, rays, **kwargs):
         # only support for Im4D
-        assert cfg.task == 'im4d'
+        assert rays.shape[0] == 1
+        # assert cfg.task == 'im4d'
         rays_o, rays_d = rays[0, :, :3], rays[0, :, 3:6]
         viewdir = rays_d / rays_d.norm(dim=-1, keepdim=True)
         n_rays = len(rays_o)
@@ -195,8 +225,45 @@ class Network(nn.Module):
         ray_indices, t_starts, t_ends = self.occ_grids[frame_id].sampling(
             rays_o,
             rays_d,
-            render_step_size=self.render_step_size[frame_id]
+            render_step_size=self.render_step_size[frame_id],
+            stratified=self.training
         )
+
+        if self.training and cfg.get('separate', False) and cfg.use_fg_msk:
+            t_mid = (t_starts + t_ends) / 2.0
+            points = rays_o[ray_indices] + t_mid[:, None] * rays_d[ray_indices]
+            v = viewdir[ray_indices]
+            t = time[0].item() * torch.ones_like(v[..., :1])
+            xyz_encoding = self.xyz_encoder(points[None, :, None], only_geo=True, sample_level=self.sample_level, bbox=self.bbox, time=t[None, :, None], **kwargs)
+            _, density = self.net([xyz_encoding], None, only_geo=True)
+            density = self.density_act(density)
+            delta_density = density * self.render_step_size[frame_id] * rays_d[ray_indices].norm(dim=-1)[None, :, None, None]
+            alpha = 1 - torch.exp(-delta_density)
+            weights, trans = nerfacc.render_weight_from_alpha(alpha[0, :, 0, 0], ray_indices=ray_indices, n_rays=n_rays)
+
+            fg_acc_map = nerfacc.accumulate_along_rays(
+                weights=weights,
+                values=None,
+                ray_indices=ray_indices,
+                n_rays=n_rays,
+            )[None, :, 0]
+
+        if cfg.get('separate', False):
+            ray_indices_bg, t_starts_bg, t_ends_bg = self.occ_grid_bg.sampling(
+                rays_o,
+                rays_d,
+                render_step_size=self.render_step_size_bg,
+                stratified=self.training
+            )
+
+            ray_indices = torch.concat((ray_indices, ray_indices_bg), dim=0)
+            t_starts = torch.concat((t_starts, t_starts_bg), dim=0)
+            t_ends = torch.concat((t_ends, t_ends_bg), dim=0)
+
+            ray_indices, idx = torch.sort(ray_indices)
+            t_starts = t_starts[idx]
+            t_ends = t_ends[idx]
+
         if len(ray_indices) == 0:
             acc_map = torch.zeros_like(rays[..., 0])
             depth_map = torch.zeros_like(rays[..., 0])
@@ -223,23 +290,27 @@ class Network(nn.Module):
         weights, trans = nerfacc.render_weight_from_alpha(alpha[0, :, 0, 0], ray_indices=ray_indices, n_rays=n_rays)
 
         # filter weight_threshold
-        rgb_msk = weights >= cfg.weight_thresh # only compute rgb for weighted samples
-        if rgb_msk.sum() == 0:
-            acc_map = torch.zeros_like(rays[..., 0])
-            depth_map = torch.zeros_like(rays[..., 0])
-            rgb_map = torch.zeros_like(rays[..., :3])
-            if cfg.white_bkgd: rgb_map = rgb_map + (1-acc_map[..., None])
-            output = {}
-            output.update({
-                'depth_map_{}'.format(self.sample_level): depth_map,
-                'acc_map_{}'.format(self.sample_level): acc_map,
-                'rgb_map_{}'.format(self.sample_level): rgb_map
-            })
-            return output
+        if cfg.get('separate', False):
+            rgb_msk = torch.ones_like(weights).bool()
+        else:
+            rgb_msk = weights >= cfg.weight_thresh # only compute rgb for weighted samples
+            if rgb_msk.sum() == 0:
+                acc_map = torch.zeros_like(rays[..., 0])
+                depth_map = torch.zeros_like(rays[..., 0])
+                rgb_map = torch.zeros_like(rays[..., :3])
+                if cfg.white_bkgd: rgb_map = rgb_map + (1-acc_map[..., None])
+                output = {}
+                output.update({
+                    'depth_map_{}'.format(self.sample_level): depth_map,
+                    'acc_map_{}'.format(self.sample_level): acc_map,
+                    'rgb_map_{}'.format(self.sample_level): rgb_map
+                })
+                return output
 
         # compute rgb fields
         ibr_feat = self.xyz_encoder.feature_projection(points[rgb_msk][None, :, None], viewdir=v[rgb_msk][None, :, None], time=t[rgb_msk][None, :, None], sample_level=self.sample_level, **kwargs)
         rgb, _ = self.net.enerf_net(ibr_feat, v[rgb_msk][None, :, None][..., :3])
+
         rgb_map = nerfacc.accumulate_along_rays(
             weights=weights[rgb_msk],
             values=rgb[0, :, 0, :],
@@ -259,13 +330,17 @@ class Network(nn.Module):
             n_rays=n_rays,
         )[None, :, 0]
 
-        if cfg.white_bkgd: rgb_map = rgb_map + (1-acc_map[..., None])
+        if cfg.white_bkgd: rgb_map = rgb_map + (1 - acc_map[..., None])
         output = {}
         output.update({
             'depth_map_{}'.format(self.sample_level): depth_map,
             'acc_map_{}'.format(self.sample_level): acc_map,
             'rgb_map_{}'.format(self.sample_level): rgb_map
         })
+        if self.training and cfg.get('separate', False) and cfg.use_fg_msk:
+            output.update({
+                'fg_acc_map_{}'.format(self.sample_level): fg_acc_map
+            })
         return output
 
     def forward(self, batch, batch_share_info={}):
@@ -280,21 +355,32 @@ class Network(nn.Module):
         wpts = wpts[None, :, None]
         time = torch.ones_like(wpts[..., :1]) * kwargs['batch']['time'][0]
         xyz_encoding = self.xyz_encoder(wpts, only_geo=True, sample_level=self.sample_level, bbox=self.bbox, time=time, **kwargs)
-        _, sigma = self.net([xyz_encoding], None, only_geo=True)
+        if cfg.task == 'im4d':
+            _, sigma = self.net([xyz_encoding], None, only_geo=True)
+        else:
+            _, sigma = self.net(xyz_encoding, None, only_geo=True)
         return sigma.reshape(-1, 1)
 
     def cache_grid(self, batch, save_ply=False):
         assert(len(batch['bounds']) == 1)
-        wpts = FastRendUtils.prepare_wpts(batch['bounds'][0], cfg.grid_resolution, cfg.subgrid_resolution)
+        wpts = FastRendUtils.prepare_wpts(batch['bounds'][0].cpu(), cfg.grid_resolution, cfg.subgrid_resolution)
         # wpts = data_utils.get_space_points_torch(batch['bounds'][0], cfg.grid_resolution)
         shape = wpts.shape
-        sigma = chunkify(self.inference_density, cat_tensor, [wpts.reshape(-1, 3)], chunk_size=cfg.chunk_size, chunk_dim=0, batch=batch)
-        sigma = sigma.reshape(shape[:-1])
-        binary = (sigma > cfg.sigma_thresh).float().sum(dim=-1) > 0
+
+        binary = torch.zeros(cfg.grid_resolution)
+        chunk_size_x = cfg.chunk_size_x
+        chunk_size_y = cfg.chunk_size_y
+        for i in range(0, shape[0], chunk_size_x):
+            for j in range(0, shape[1], chunk_size_y):
+                sigma = self.inference_density(wpts[i:i + chunk_size_x, j:j + chunk_size_y].reshape(-1, 3).cuda(), batch=batch)
+                sigma = sigma.reshape(chunk_size_x, chunk_size_y, shape[2], shape[3])
+                binary[i:i + chunk_size_x, j:j + chunk_size_y] = (sigma > cfg.sigma_thresh).float().sum(dim=-1) > 0
+
         if cfg.padding_grid:
             structuring_element = torch.ones(1, 1, 3, 3, 3, device=binary.device)
             dilated_tensor = F.conv3d(binary[None, None].float(), structuring_element.float(), padding=1) > 0
             binary = dilated_tensor[0, 0].float()
-        if save_ply: data_utils.save_mesh_with_extracted_fields(join(cfg.grid_dir, 'meshes', '{:06d}.ply'.format(batch['meta']['frame_id'][0].item())), binary.cpu().numpy(), batch['bounds'][0].cpu().numpy(), grid_resolution=cfg.grid_resolution)
-        return binary.cpu().numpy().astype(np.bool), batch['bounds'][0].cpu().numpy()
 
+        if save_ply: data_utils.save_mesh_with_extracted_fields(join(cfg.grid_dir, 'meshes', '{:06d}.ply'.format(batch['meta']['frame_id'][0].item())), binary.cpu().numpy(), batch['bounds'][0].cpu().numpy(), grid_resolution=cfg.grid_resolution)
+        
+        return binary.cpu().numpy().astype(bool), batch['bounds'][0].cpu().numpy()

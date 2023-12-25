@@ -120,9 +120,14 @@ def parse_cfg(cfg, args):
     cfg.exp_name = cfg.exp_name.replace('GITCOMMIT', os.popen('git describe --tags --always').readline().strip())
     cfg.exp_name = cfg.exp_name.replace('TODAY', os.popen('date +%Y-%m-%d').readline().strip())
     
+    if cfg.get('separate', False):
+        cfg.grid_dir = os.path.join(cfg.workspace, cfg.train_dataset.data_root, cfg.scene, 'grid', 'foreground')
+        cfg.grid_dir_bg = os.path.join(cfg.workspace, cfg.train_dataset.data_root, cfg.scene, 'grid', 'background')
+    else:
+        cfg.grid_dir = os.path.join(cfg.result_dir, cfg.scene, cfg.task, 'grid', cfg.grid_tag)
+
     cfg.trained_model_dir = os.path.join(cfg.trained_model_dir, cfg.scene, cfg.task, cfg.exp_name)
     cfg.record_dir = os.path.join(cfg.record_dir, cfg.scene, cfg.task, cfg.exp_name)
-    cfg.grid_dir = os.path.join(cfg.result_dir, cfg.scene, cfg.task, 'grid', cfg.grid_tag)
     cfg.result_dir = os.path.join(cfg.result_dir, cfg.scene, cfg.task, cfg.exp_name, cfg.save_tag)
     cfg.local_rank = int(os.environ['LOCAL_RANK']) if 'LOCAL_RANK' in os.environ else 0
     modules = [key for key in cfg if '_module' in key]

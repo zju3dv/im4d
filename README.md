@@ -139,9 +139,7 @@ torchrun --nproc_per_node=$NUM_GPUS train_net.py --cfg_file configs/exps/im4d/xx
 <!-- We will release  -->
 ## Running on the custom dataset
 
-<details> <summary>[TODO] 1. Custom mocap datasets.</summary>
-</details>
-
+For both studio dataset and wild dataset, you can refer to [this tutorial](./docs/custom_data_tutorial.md).
 
 ## Acknowledgements
 We would like to acknowledge the following inspring prior work:

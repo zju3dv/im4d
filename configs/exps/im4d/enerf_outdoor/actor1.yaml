@@ -1,0 +1,61 @@
+scene: 'actor1'
+bounds: [[-1.0, 0.85, -0.62], [1.0, 2.05, 0.44]]
+
+configs:
+  - configs/components/datasets/enerf_outdoor_dataset.yaml
+  - configs/components/datasets/mvibr.yaml
+  - configs/components/methods/im4d_nerfacc.yaml
+  - configs/components/losses/kplanes_loss.yaml
+  - configs/components/opts/base_opt.yaml
+  - configs/components/opts/im4d_opt.yaml
+  - configs/components/engine/im4d_engine.yaml
+
+num_pixels: 1024
+chunk_size: 1024
+
+train:
+    epoch: 160
+
+dataset_cfg: &dataset_cfg
+
+    intri_file: nerfstudio/sparse/intri.yml
+    extri_file: nerfstudio/sparse/extri.yml
+    scene_pcd: nerfstudio/sparse/exports/pcd/point_cloud.ply
+
+    img_dir: 'images'
+    img_frame_format: '{:06d}.jpg'
+    msk_dir: 'masks'
+    msk_frame_format: '{:06d}.jpg'
+
+    bbox_type: 'VHULL'
+    vhull_dir: vhull
+
+    imgs_per_batch: 1
+    crop_h_w: [-1, -1]
+
+train_dataset:
+    <<: *dataset_cfg
+    frame_sample: [0, 150, 1]
+test_dataset:
+    <<: *dataset_cfg
+    frame_sample: [0, 150, 150]
+
+
+separate: True
+
+grid_tag: foreground
+grid_tag_bg: background
+
+fast_render: True
+num_max_samples: 256
+num_max_samples_bg: 1024
+
+use_fg_msk: True
+loss:
+    msk_weight: 0.0
+    fg_msk_weight: 0.1
+
+save_ep: 5
+eval_ep: 5
+log_interval: 100
+ep_iter: 1000

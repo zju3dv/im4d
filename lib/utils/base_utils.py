@@ -107,7 +107,7 @@ def get_bound_2d_mask(bounds, K, pose, H, W):
     corners_2d = np.round(corners_2d).astype(int)
     mask = np.zeros((H, W), dtype=np.uint8)
     cv2.fillPoly(mask, [corners_2d[[0, 1, 3, 2, 0]]], 1)
-    cv2.fillPoly(mask, [corners_2d[[4, 5, 7, 6, 5]]], 1)
+    cv2.fillPoly(mask, [corners_2d[[4, 5, 7, 6, 4]]], 1)
     cv2.fillPoly(mask, [corners_2d[[0, 1, 5, 4, 0]]], 1)
     cv2.fillPoly(mask, [corners_2d[[2, 3, 7, 6, 2]]], 1)
     cv2.fillPoly(mask, [corners_2d[[0, 2, 6, 4, 0]]], 1)
