@@ -13,6 +13,70 @@ from lib.utils.data_utils import load_path_pose
 class Dataset(BaseDataset):
     
     def get_render_path_meta(self, input_views):
+        if self.path_type == 'NERFSTUDIO':
+            repeat_num = 10
+            path_path = join(self.data_root, 'nerfstudio/camera_paths', self.path_name)
+            pcd_path = join(self.data_root, 'nerfstudio/exports/pcd', self.cfg.get('scene_pcd'))
+            if not os.path.exists(path_path): path_path = join(self.data_root, self.path_name)
+            if not os.path.exists(pcd_path): pcd_path = join(self.data_root, self.cfg.get('scene_pcd'))
+            poses, ixts, near_fars, h, w = load_path_pose(path_path, pcd_path)
+
+            poses = np.concatenate([poses if i%2==0 else poses[::-1] for i in range(repeat_num)])
+            ixts = np.concatenate([ixts if i%2==0 else ixts[::-1] for i in range(repeat_num)])
+            near_fars = np.concatenate([near_fars if i%2==0 else near_fars[::-1] for i in range(repeat_num)])
+
+            self.render_exts = poses
+            self.render_ixts = ixts
+            self.render_near_fars = near_fars
+            self.render_h_w = [h, w]
+            self.render_ratio = self.cfg.get('render_ratio', 1.)
+            if self.render_ratio != 1.:
+                self.render_ixts[:, :2] *= self.render_ratio
+                self.render_h_w = [int(h * self.render_ratio), int(w * self.render_ratio)]
+            render_crop = self.cfg.get('render_crop', [-1, -1])
+            orig_h, orig_w = self.render_h_w
+            render_h, render_w = render_crop
+            if render_h != -1 and orig_h > render_h:
+                self.render_h_w[0] = render_h
+                self.render_ixts[:, 1, 2] -= (orig_h - render_h) // 2
+            if render_w != -1 and orig_w > render_w:
+                self.render_h_w[1] = render_w
+                self.render_ixts[:, 0, 2] -= (orig_w - render_w) // 2
+            h, w = self.render_h_w
+            if h%32 != 0: h = h//32 * 32
+            if w%32 != 0: w = w//32 * 32
+            self.render_h_w = [h, w]
+            self.render_exts_inv = np.linalg.inv(self.render_exts).astype(np.float32)
+            self.render_ixts_inv = np.linalg.inv(self.render_ixts).astype(np.float32)
+
+            stop_frames = {} # 
+            frames = []
+            frames_ = np.arange(*self.cfg.get('frame_sample'))
+            for frame_id in frames_:
+                if frame_id in stop_frames:
+                    frames += [frame_id] * stop_frames[frame_id]
+                else:
+                    frames.append(frame_id)
+
+            # poses = poses[:len(frames)]
+            if self.frame_len == 1:
+                frame_id = self.cfg.get('frame_sample')[0]
+                # frame_id = kwargs['frame_sample'][0]
+                for ext in poses:
+                    near_views = self.get_near_views(np.linalg.inv(ext), input_views)
+                    for idx in near_views:
+                        self.preload_img(frame_id, idx)
+                    self.meta += [(frame_id, -1, near_views)]
+            else:
+                # frames = np.arange(*self.cfg.get('frame_sample'))[:len(poses)]
+                for ext, frame_id in zip(poses, frames):
+                    near_views = self.get_near_views(np.linalg.inv(ext), input_views)
+                    for idx in near_views:
+                        self.preload_img(frame_id, idx)
+                    self.meta += [(frame_id, -1, near_views)]
+
+            return
+
         super().get_render_path_meta(input_views)
         for index, meta in enumerate(self.meta):
             render_ext = self.render_exts[index]
@@ -122,6 +186,8 @@ class Dataset(BaseDataset):
         ws, hs = [], []
         for view_id in src_views:
             img, msk = self.read_img(frame_id, view_id)
+            if cfg.get('separate', False):
+                msk = (np.ones_like(img[..., 0])).astype(np.uint8)
             x, y, w, h = cv2.boundingRect(msk.astype(np.uint8))
             ws.append(w)
             hs.append(h)

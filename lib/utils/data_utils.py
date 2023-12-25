@@ -1308,6 +1308,11 @@ def read_bbox_nhr(data_root, frame_id, transform, bound_padding=0.1):
     bounds = np.array([points.min(0)-bound_padding, points.max(0)+bound_padding]).astype(np.float32)
     return bounds
 
+def read_bbox_vhull(data_root, path, frame_id, bound_padding=0.1):
+    bounds = np.load(join(data_root, path, '{:06d}.npy'.format(frame_id)))
+    bounds = np.array([bounds[0] - bound_padding, bounds[1] + bound_padding]).astype(np.float32)
+    return bounds
+
 def export_depth_to_pcd(depth, ixt, path='debug_depth.ply', crop_ratio=0.1):
     h, w = depth.shape
     crop_h, crop_w = int(crop_ratio * h), int(crop_ratio * w)

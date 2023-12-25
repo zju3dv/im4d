@@ -58,7 +58,7 @@ class Dataset:
         self.near_far = np.array(self.cfg.get('near_far', [0.1, 100.]))
         self.bbox_type = self.cfg.get('bbox_type', 'NONE')
         self.render_path = cfg.get('render_path', False)
-        self.path_type = self.cfg.get('path_type', 'NERFSTUDIO')
+        self.path_type = self.cfg.get('path_type', 'NONE')
         self.path_name = self.cfg.get('path_name', '2023-07-13_220007.json')
 
     def prepare_camera(self):
@@ -162,6 +162,9 @@ class Dataset:
         for frame_id in tqdm(np.arange(*frames), desc='loading bboxs'):
             if self.bbox_type == 'RENBODY': bounds = data_utils.read_bbox_renbody(self.data_root, frame_id, transform, cfg.bound_padding)
             elif self.bbox_type == 'NHR': bounds = data_utils.read_bbox_nhr(self.data_root, frame_id, transform, cfg.bound_padding)
+            elif self.bbox_type == 'VHULL':
+                path = self.cfg.get('vhull_dir', 'vhull')
+                bounds = data_utils.read_bbox_vhull(self.data_root, path, frame_id, cfg.bound_padding)
             elif self.bbox_type == 'GENERAL': import ipdb; ipdb.set_trace()
             else: bounds = np.asarray(cfg.bounds).astype(np.float32)
             self.bounds[frame_id] = bounds
@@ -378,9 +381,11 @@ class Dataset:
         if 'schp' not in self.msk_dir: msk = (msk / 255.).astype(np.float32)
         else: msk = (msk != 0).astype(np.float32)
         img = (img / 255.).astype(np.float32)
-        img = img * msk[..., None]
-        if cfg.white_bkgd:
-            img = img + 1 * (1 - msk[..., None])
+        
+        if self.bbox_type != 'VHULL':
+            img = img * msk[..., None]
+            if cfg.white_bkgd:
+                img = img + 1 * (1 - msk[..., None])
         return img, msk
 
     def __getitem__(self, index):
@@ -461,7 +466,7 @@ class Dataset:
                     'time': np.array(t).astype(np.float32),
                     'h_w': np.array([h, w]).astype(np.int32),
                     'near_far': near_far.astype(np.float32)})
-        if self.have_msk: ret.update({'bounds': self.bounds[frame_id].astype(np.float32)})
+        if self.bbox_type != 'VHULL': ret.update({'bounds': self.bounds[frame_id].astype(np.float32)})
         if self.have_msk and 'renbody' in self.data_root and self.cfg.get('use_global_bbox', True): ret.update({'bounds': self.bound.astype(np.float32)}) #
         ret.update({'meta': {'H': h, 'W': w, 'idx': index, 'frame_id': frame_id, 'view_id': tar_view}})
         return ret

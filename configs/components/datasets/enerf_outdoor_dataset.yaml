@@ -1,0 +1,41 @@
+train_dataset_module: lib.datasets.volcap.base_dataset
+test_dataset_module: lib.datasets.volcap.base_dataset
+render_path: False # whether to render path
+num_pixels: 2560 # number of pixels to sample for each image during each tarining iteration
+white_bkgd: False
+
+dataset_cfg: &dataset_cfg
+    scene_type: 'nerfstudio_scene'
+    path_type: 'NERFSTUDIO'
+    data_root: 'enerf_outdoor'
+
+    img_dir: 'images'
+    img_frame_format: '{:06d}.jpg'
+    msk_dir: 'none'
+
+    resize_ratio: 1.
+    special_views: []
+    crop_h_w: [-1, -1]
+
+    input_view_sample: [0, 18, 1, -1]
+    render_view_sample: [0, 18, 1, -1]
+    test_views: [17]
+
+    preload_data: True
+    imgs_per_batch: 1
+
+    ignore_dist_k3: False
+    bbox_type: 'NONE'
+    scene_pcd: background.ply
+    near_plane_ratio: 0.95
+    far_plane_ratio: 1.05
+    near_far: [0.2, 100.]
+    dist_opt_K: True
+train_dataset:
+    <<: *dataset_cfg
+    split: 'train'
+    frame_sample: [0, 1200, 1]
+test_dataset:
+    <<: *dataset_cfg
+    split: 'test'
+    frame_sample: [0, 1200, 400]

@@ -1,0 +1,15 @@
+render_path: True
+write_video: True
+save_result: True
+save_tag: path
+fps: 15
+
+test_dataset:
+    path_name: nerfstudio/sparse/camera_paths/2023-08-22_163806.json
+
+    frame_sample: [0, 150, 1]
+    input_view_sample: [0, 18, 1, -1]
+    test_views: [-1]
+
+evaluate:
+    metrics: []

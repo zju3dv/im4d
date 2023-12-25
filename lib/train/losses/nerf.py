@@ -105,6 +105,11 @@ class NetworkWrapper(nn.Module):
         msk_mse = self.color_crit(output['acc_map{}'.format(suffix)], batch['msk'])
         scalar_stats.update({'msk_mse{}'.format(suffix): msk_mse})
         return cfg.loss.get('msk_weight') * msk_mse
+    
+    def compute_fg_msk_loss(self, output, batch, scalar_stats, suffix):
+        msk_mse = self.color_crit(output['fg_acc_map{}'.format(suffix)], batch['msk'])
+        scalar_stats.update({'fg_msk_mse{}'.format(suffix): msk_mse})
+        return cfg.loss.get('fg_msk_weight') * msk_mse
         
     def compute_prop_loss(self, output, batch, scalar_stats, suffix):
         c = output['t_vals_0']
@@ -192,6 +197,7 @@ class NetworkWrapper(nn.Module):
         if 'rgb_map{}'.format(suffix) in output: loss += self.compute_color_loss(output, batch, scalar_stats, suffix) 
         if self.training and 'rgb_map{}'.format(suffix) in output and cfg.get('num_patches', 0) > 0 and cfg.loss.get('perc_loss', 0.) > 0.: loss += self.compute_perc_loss(output, batch, scalar_stats, suffix)
         if 'acc_map{}'.format(suffix) in output and 'msk' in batch and cfg.loss.get('msk_weight', 0.) > 0.: loss += self.compute_msk_loss(output, batch, scalar_stats, suffix) 
+        if 'fg_acc_map{}'.format(suffix) in output and 'msk' in batch and cfg.use_fg_msk and cfg.loss.get('fg_msk_weight', 0.) > 0.: loss += self.compute_fg_msk_loss(output, batch, scalar_stats, suffix) 
         if level >= 1 and cfg.loss.get('prop_weight', 0.) > 0. and 'weights{}'.format(suffix) in output: loss += self.compute_prop_loss(output, batch, scalar_stats, suffix) 
         if cfg.loss.get('plane_tv', 0.) > 0. and batch['step'] % cfg.loss.get('plane_tv_step', 1) == 0: loss += self.compute_planetv_loss(output, batch, scalar_stats, suffix, level=level) 
         if cfg.loss.get('time_smooth', [0., 0., 0., 0., 0.])[level] > 0. and batch['step'] % cfg.loss.get('time_smooth_step', 1) == 0: loss += self.compute_timesmooth_loss(output, batch, scalar_stats, suffix, level=level) 

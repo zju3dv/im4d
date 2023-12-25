@@ -1,0 +1,14 @@
+grid_resolution: [512, 512, 512]
+subgrid_resolution: [3, 3, 3]
+padding_grid: False
+chunk_size: 1048576 # 2**20
+save_mesh: True
+chunk_size_x: 16
+chunk_size_y: 32
+sigma_thresh: 5.0
+test_dataset:
+    frame_sample: [0, 1, 1] #
+    test_views: [0]
+    preload_data: False
+    use_global_bbox: False
+    imgs_per_batch: 1
